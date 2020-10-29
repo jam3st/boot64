@@ -1,6 +1,4 @@
 # boot64
 
-Simple serial testing PC 64 bit mode tet
+gdb -ex "add-auto-load-safe-path $PWD" -ex "file x/boot" -ex "set arch i386:x86-64:intel"  -ex "target remote 192.168.1.2:1234"  -ex "hbreak hbreak_start" -ex "continue"
 
-Run using:
-qemu-system-x86_64 -vga none -display none -serial stdio  -kernel boot

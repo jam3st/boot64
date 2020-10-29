@@ -1,13 +1,10 @@
 .set MB_MAGIC,                      0x1badb002
 .set MB_FLAGS,                      0x00010040
 
-.set MB_BL_MAGIC,                   0x2badb002
 
 .set CODE_SEG,                          0x0008
 .set DATA_SEG,                          0x0010
-.set SERIAL_PORT,                       0x03f8
 
-.set KERN_VMA_BASE,         0xffffffff80000000
 
     	.section            ".boot.text", "ax"
         .code32
@@ -18,26 +15,13 @@ mbStart:
         .long -MB_MAGIC - MB_FLAGS
 
         .long mbStart
-        .long _start
+        .long mbStart
         .long 0
         .long 0
-        .long _start
-mbEnd:
+        .long start32
 
-	    .globl _start
-_start:
-        jmp start32
-        .balign 16
-        .code32
 start32:
         cli
-        cmpl $MB_BL_MAGIC, %eax
-        je magicOk
-
-haltStart32:
-        hlt
-        jmp haltStart32
-magicOk:
         movl %ebx, %edi
 
         # enable 64-bit page table with CR4.PAE
@@ -46,7 +30,6 @@ magicOk:
         movl %eax, %cr4
 
         # fill just enough of the page table
-
         # create a long mode page table
         movl $(pml4), %eax
         movl %eax, %cr3
@@ -79,9 +62,6 @@ start64:
         movw %ax, %es
         movw %ax, %fs
         movw %ax, %gs
-
-        lea stackTop, %esp
-
        # Push that address into IA32_LSTAR
         movq $0xC0000082, %rcx
         wrmsr
@@ -93,11 +73,11 @@ start64:
         wrmsr
 
         movl $0x12344345, %esi
+        movl $(stackTop), %esp
+        .balign 16
+        .global hbreak_start
+hbreak_start:
         jmp bootStart
-
-        .balign 4096
-        .fill 4096, 8, 00
-stackTop:
 
 # GDT and IDT
         .balign 4096
@@ -165,5 +145,23 @@ pml1:
         i = 0
         .rept 512
         .quad ( i + 0x0000000000000003)
+        i = i + 4096
+        .endr
+
+        .balign 4096
+stackBottom:
+        i = 0
+        .rept 512
+        .quad ( i + 0xdeadbeeff00df00f)
+        i = i + 4096
+        .endr
+stackTop:
+        .quad 0
+        .quad 0
+        .quad 0
+        .quad 0
+        i = 0
+        .rept 509
+        .quad ( i + 0xb00ff00b55aa1234)
         i = i + 4096
         .endr
